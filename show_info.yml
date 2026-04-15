@@ -1,0 +1,30 @@
+---
+- name: System Info
+  hosts: baf_linux
+  gather_facts: true
+  tasks:
+    - name: Print OS
+      debug:
+        msg: "Operating System: {{ ansible_system }}"
+
+    - name: Print CPU cores
+      debug:
+        msg: "CPU cores: {{ ansible_processor_vcpus }}"
+
+    - name: Get memory info
+      command: free -h
+      register: mem_info
+      changed_when: false
+
+    - name: Print memory info
+      debug:
+        msg: "{{ mem_info.stdout_lines }}"
+
+    - name: Get disk usage
+      command: df -h /
+      register: disk_info
+      changed_when: false
+
+    - name: Print disk usage
+      debug:
+        msg: "{{ disk_info.stdout_lines }}"
