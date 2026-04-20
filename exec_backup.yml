@@ -1,0 +1,53 @@
+- name: Execute Restic backup
+  hosts: all
+  strategy: free
+  become: true
+
+  vars:
+    restic_version: "0.18.1"
+    restic_bin_name: "restic_{{ restic_version }}_linux_amd64"
+    restic_bin_path: "/tmp/{{ restic_bin_name }}"
+
+  tasks:
+    - name: Check if restic binary exists
+      stat:
+        path: "{{ restic_bin_path }}"
+      register: restic_bin_stat
+
+    - name: Download restic binary
+      get_url:
+        url: "https://github.com/restic/restic/releases/download/v{{ restic_version }}/{{ restic_bin_name }}.bz2"
+        dest: "{{ restic_bin_path }}.bz2"
+        mode: "0600"
+      when: not restic_bin_stat.stat.exists
+
+    - name: Decompress restic binary
+      command: bzip2 -d {{ restic_bin_path }}.bz2
+      when: not restic_bin_stat.stat.exists
+
+    - name: Make restic binary executable
+      file:
+        path: "{{ restic_bin_path }}"
+        mode: "0755"
+      when: not restic_bin_stat.stat.exists
+
+    - name: Run restic backup
+      command: >
+        {{ restic_bin_path }} backup /
+        --exclude /proc
+        --exclude /run
+        --exclude /sys
+        --exclude /dev
+        --exclude /mnt
+        --exclude /media
+        --exclude /var/cache
+        --exclude /var/lib/docker/overlay2
+        --exclude /var/lib/containerd
+        --exclude /var/snap/
+        --tag {{ ansible_hostname }}
+      environment:
+        RESTIC_REPOSITORY: "{{ restic_repo_base }}"
+        RESTIC_PASSWORD: "{{ restic_master_password }}"
+        AWS_ACCESS_KEY_ID: "{{ restic_access_key }}"
+        AWS_SECRET_ACCESS_KEY: "{{ restic_secret_key }}"
+        AWS_DEFAULT_REGION: "{{ restic_repo_region }}"
